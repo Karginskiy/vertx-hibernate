@@ -1,16 +1,26 @@
 package utils.vertx;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 
-import java.util.Optional;
+import io.reactivex.Maybe;
+import io.vertx.reactivex.core.Future;
+import io.vertx.reactivex.core.Vertx;
+
 import java.util.function.Supplier;
 
 public abstract class VertxUtils {
-    public static void completeWithCatch(Future future, Runnable tryAction) {
+
+    public static Maybe<Boolean> rxExecuteAndComplete(Vertx vertx, Runnable action) {
+        return vertx.rxExecuteBlocking(future -> completeWithCatch(future, action));
+    }
+
+    public static <T> Maybe<T> rxExecuteAndSupply(Vertx vertx, Supplier<T> supplier) {
+        return vertx.rxExecuteBlocking(future -> supplyWithCatch(future, supplier));
+    }
+
+    public static void completeWithCatch(Future<Boolean> future, Runnable tryAction) {
         try {
             tryAction.run();
-            future.complete();
+            future.complete(true); // RxJava2 hates nulls
         } catch (Exception e) {
             future.fail(e);
         }
@@ -21,32 +31,6 @@ public abstract class VertxUtils {
             future.complete(supplier.get());
         } catch (Exception e) {
             future.fail(e);
-        }
-    }
-
-    public static <T> void resolveFuture(Future<T> future, AsyncResult result, Supplier<T> supplier) {
-        if (result.succeeded()) {
-            future.complete(supplier.get());
-        } else {
-            future.fail(result.cause());
-        }
-    }
-
-    public static <T> void resolveFutureByOptional(Future<Optional<T>> future, AsyncResult result, Supplier<T> supplier) {
-        if (result.succeeded()) {
-            future.complete(Optional.ofNullable(supplier.get()));
-        } else {
-            future.fail(result.cause());
-        }
-    }
-
-    public static void resolveAsyncResult(AsyncResult result, Future future, Runnable succeededAction, Runnable failedAction) {
-        if (result.succeeded()) {
-            succeededAction.run();
-            future.complete();
-        } else {
-            failedAction.run();
-            future.fail(result.cause());
         }
     }
 }
